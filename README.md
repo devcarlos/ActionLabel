@@ -1,4 +1,4 @@
-# ActionLabel [![Platform](https://img.shields.io/cocoapods/p/ActionLabel.svg)](http://cocoadocs.org/docsets/ActionLabel/) [![Carthage compatible](https://img.shields.io/badge/Carthage-compatible-4BC51D.svg?style=flat)](https://github.com/Carthage/Carthage) [![Build Status](https://travis-ci.org/devcarlos/ActionLabel.swift.svg)](https://travis-ci.org/devcarlos/ActionLabel) [![license MIT](https://img.shields.io/cocoapods/l/ActionLabel.svg)](http://opensource.org/licenses/MIT)
+# ActionLabel [![Platform](https://img.shields.io/cocoapods/p/ActionLabel.svg)](http://cocoadocs.org/docsets/ActionLabel/) [![Carthage compatible](https://img.shields.io/badge/Carthage-compatible-4BC51D.svg?style=flat)](https://github.com/Carthage/Carthage) [![Build Status](https://travis-ci.org/devcarlos/ActionLabel.svg)](https://travis-ci.org/devcarlos/ActionLabel) [![license MIT](https://img.shields.io/cocoapods/l/ActionLabel.svg)](http://opensource.org/licenses/MIT)
 
 Custom UILabel replacement to recognize, colorize and allow custom action handlers for Hashtags (#), Mentions (@) and URLs (http/https).
 
