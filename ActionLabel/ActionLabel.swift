@@ -27,9 +27,7 @@ typealias ActionFilterPredicate = ((String) -> Bool)
 
 struct ALParser {
     
-    static let linkPattern = "(^|[\\s.:;?\\-\\]<\\(])" +
-        "((https?://|www\\.|pic\\.)[-\\w;/?:@&=+$\\|\\_.!~*\\|'()\\[\\]%#,☺]+[\\w/#](\\(\\))?)" +
-    "(?=$|[\\s',\\|\\(\\).:;?\\-\\[\\]>\\)])"
+    static let linkPattern = "(^|\\s)((https?:\\/\\/)?[\\w-]+(\\.[\\w-]+)+\\.?(:\\d+)?(\\/\\S*)?)"
     
     static let hashtagPattern = "(?:^|\\s|$)#[\\p{L}0-9_]*"
     
