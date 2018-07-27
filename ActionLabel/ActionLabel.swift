@@ -22,7 +22,7 @@ public enum ActionType {
     case None
 }
 
-typealias ActionFilterPredicate = (String -> Bool)
+typealias ActionFilterPredicate = ((String) -> Bool)
 
 struct ActionParser {
     
@@ -40,31 +40,31 @@ struct ActionParser {
         
         switch type {
         case .Hashtag:
-            regex = try? NSRegularExpression(pattern: hashtagPattern, options: [.CaseInsensitive])
+            regex = try? NSRegularExpression(pattern: hashtagPattern, options: [.caseInsensitive])
         case .Mention:
-            regex = try? NSRegularExpression(pattern: mentionPattern, options: [.CaseInsensitive])
+            regex = try? NSRegularExpression(pattern: mentionPattern, options: [.caseInsensitive])
         case .URL:
-            regex = try? NSRegularExpression(pattern: linkPattern, options: [.CaseInsensitive])
+            regex = try? NSRegularExpression(pattern: linkPattern, options: [.caseInsensitive])
         case .None: break
         }
         
         guard let validRegex = regex else { return [] }
-        return validRegex.matchesInString(text, options: [], range: range)
+        return validRegex.matches(in: text, options: [], range: range)
     }
 }
 
 struct ActionBuilder {
     
     static func getElementsByType(type: ActionType, fromText text: String, range: NSRange, filterPredicate: ActionFilterPredicate? = nil) -> [(range: NSRange, element: ActionElement)] {
-        let parsedElements = ActionParser.getElementsByType(type, fromText: text, range: range)
+        let parsedElements = ActionParser.getElementsByType(type: type, fromText: text, range: range)
         let nsstring = text as NSString
         var elements: [(range: NSRange, element: ActionElement)] = []
         
         for element in parsedElements where element.range.length > 2 {
             let range = NSRange(location: element.range.location + 1, length: element.range.length - 1)
-            var word = nsstring.substringWithRange(range)
+            var word = nsstring.substring(with: range)
             if word.hasPrefix("@") || word.hasPrefix("#") {
-                word.removeAtIndex(word.startIndex)
+                word.remove(at: word.startIndex)
             }
             
             var newElement: ActionElement?
@@ -79,10 +79,9 @@ struct ActionBuilder {
                     newElement = ActionElement.Mention(word)
                 }
             case .URL:
-                let word = nsstring.substringWithRange(element.range)
-                    .stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+                let word = nsstring.substring(with: element.range).trimmingCharacters(in: .whitespacesAndNewlines)
                 newElement = ActionElement.URL(word)
-            
+                
             case .None: break
             }
             
@@ -104,19 +103,19 @@ public protocol ActionLabelDelegate: class {
     // MARK: properties
     public weak var delegate: ActionLabelDelegate?
     
-    @IBInspectable public var mentionColor: UIColor = .blueColor() {
+    @IBInspectable public var mentionColor: UIColor = .blue {
         didSet { updateLabel(parseText: false) }
     }
     @IBInspectable public var mentionSelectedColor: UIColor? {
         didSet { updateLabel(parseText: false) }
     }
-    @IBInspectable public var hashtagColor: UIColor = .blueColor() {
+    @IBInspectable public var hashtagColor: UIColor = .blue {
         didSet { updateLabel(parseText: false) }
     }
     @IBInspectable public var hashtagSelectedColor: UIColor? {
         didSet { updateLabel(parseText: false) }
     }
-    @IBInspectable public var URLColor: UIColor = .blueColor() {
+    @IBInspectable public var URLColor: UIColor = .blue {
         didSet { updateLabel(parseText: false) }
     }
     @IBInspectable public var URLSelectedColor: UIColor? {
@@ -127,24 +126,24 @@ public protocol ActionLabelDelegate: class {
     }
     
     // MARK: methods
-    public func mentionHandler(handler: (String) -> ()) {
+    public func mentionHandler(handler: @escaping (String) -> ()) {
         mentionHandler = handler
     }
     
-    public func hashtaghandler(handler: (String) -> ()) {
+    public func hashtaghandler(handler: @escaping (String) -> ()) {
         hashtagHandler = handler
     }
     
-    public func linkHandler(handler: (NSURL) -> ()) {
+    public func linkHandler(handler: @escaping (NSURL) -> ()) {
         linkHandler = handler
     }
     
-    public func filterMention(predicate: (String) -> Bool) {
+    public func filterMention(predicate: @escaping (String) -> Bool) {
         mentionFilterPredicate = predicate
         updateLabel()
     }
     
-    public func filterHashtag(predicate: (String) -> Bool) {
+    public func filterHashtag(predicate: @escaping (String) -> Bool) {
         hashtagFilterPredicate = predicate
         updateLabel()
     }
@@ -196,72 +195,71 @@ public protocol ActionLabelDelegate: class {
         updateLabel()
     }
     
-    public override func drawTextInRect(rect: CGRect) {
+    public override func drawText(in rect: CGRect) {
         let range = NSRange(location: 0, length: textStorage.length)
         
         textContainer.size = rect.size
         let newOrigin = textOrigin(inRect: rect)
         
-        layoutManager.drawBackgroundForGlyphRange(range, atPoint: newOrigin)
-        layoutManager.drawGlyphsForGlyphRange(range, atPoint: newOrigin)
+        layoutManager.drawBackground(forGlyphRange: range, at: newOrigin)
+        layoutManager.drawGlyphs(forGlyphRange: range, at: newOrigin)
     }
     
     
     // MARK: - customization
-    public func customize(block: (label: ActionLabel) -> ()) -> ActionLabel{
+    public func customize(block: (_ label: ActionLabel) -> ()) -> ActionLabel {
         _customizing = true
-        block(label: self)
+        block(self)
         _customizing = false
         updateLabel()
         return self
     }
     
     // MARK: - Auto layout
-    public override func intrinsicContentSize() -> CGSize {
-        let superSize = super.intrinsicContentSize()
-        textContainer.size = CGSize(width: superSize.width, height: CGFloat.max)
-        let size = layoutManager.usedRectForTextContainer(textContainer)
+    public override var intrinsicContentSize: CGSize {
+        let superSize = super.intrinsicContentSize
+        textContainer.size = CGSize(width: superSize.width, height: CGFloat.greatestFiniteMagnitude)
+        let size = layoutManager.usedRect(for: textContainer)
         return CGSize(width: size.width, height: ceil(size.height))
     }
     
     // MARK: - touch events
     func onTouch(touch: UITouch) -> Bool {
-        let location = touch.locationInView(self)
+        let location = touch.location(in: self)
         var avoidSuperCall = false
         
         switch touch.phase {
-        case .Began, .Moved:
-            if let element = elementAtLocation(location) {
+        case .began, .moved:
+            if let element = elementAtLocation(location: location) {
                 if element.range.location != selectedElement?.range.location || element.range.length != selectedElement?.range.length {
-                    updateAttributesWhenSelected(false)
+                    updateAttributesWhenSelected(isSelected: false)
                     selectedElement = element
-                    updateAttributesWhenSelected(true)
+                    updateAttributesWhenSelected(isSelected: true)
                 }
                 avoidSuperCall = true
             } else {
-                updateAttributesWhenSelected(false)
+                updateAttributesWhenSelected(isSelected: false)
                 selectedElement = nil
             }
-        case .Ended:
+        case .ended:
             guard let selectedElement = selectedElement else { return avoidSuperCall }
             
             switch selectedElement.element {
-            case .Mention(let userHandle): didTapMention(userHandle)
-            case .Hashtag(let hashtag): didTapHashtag(hashtag)
-            case .URL(let url): didTapStringURL(url)
+            case .Mention(let userHandle): didTapMention(username: userHandle)
+            case .Hashtag(let hashtag): didTapHashtag(hashtag: hashtag)
+            case .URL(let url): didTapStringURL(stringURL: url)
             case .None: ()
             }
             
-            let when = dispatch_time(DISPATCH_TIME_NOW, Int64(0.25 * Double(NSEC_PER_SEC)))
-            dispatch_after(when, dispatch_get_main_queue()) {
-                self.updateAttributesWhenSelected(false)
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.25) {
+                self.updateAttributesWhenSelected(isSelected: false)
                 self.selectedElement = nil
             }
             avoidSuperCall = true
-        case .Cancelled:
-            updateAttributesWhenSelected(false)
+        case .cancelled:
+            updateAttributesWhenSelected(isSelected: false)
             selectedElement = nil
-        case .Stationary:
+        default:
             break
         }
         
@@ -287,7 +285,7 @@ public protocol ActionLabelDelegate: class {
         .Mention: [],
         .Hashtag: [],
         .URL: [],
-    ]
+        ]
     
     // MARK: - helper functions
     private func setupLabel() {
@@ -296,27 +294,27 @@ public protocol ActionLabelDelegate: class {
         textContainer.lineFragmentPadding = 0
         textContainer.lineBreakMode = lineBreakMode
         textContainer.maximumNumberOfLines = numberOfLines
-        userInteractionEnabled = true
+        isUserInteractionEnabled = true
     }
     
-    private func updateLabel(parseText parseText: Bool = true) {
+    private func updateLabel(parseText: Bool = true) {
         if _customizing { return }
         // clean up previous Action elements
-        guard let attributedText = attributedText where attributedText.length > 0 else {
+        guard let attributedText = attributedText, attributedText.length > 0 else {
             clearActionElements()
             textStorage.setAttributedString(NSAttributedString())
             setNeedsDisplay()
             return
         }
         
-        let mutAttrString = addLineBreak(attributedText)
+        let mutAttrString = addLineBreak(attrString: attributedText)
         
         if parseText {
             clearActionElements()
-            parseTextAndExtractActionElements(mutAttrString)
+            parseTextAndExtractActionElements(attrString: mutAttrString)
         }
         
-        self.addLinkAttribute(mutAttrString)
+        self.addLinkAttribute(mutAttrString: mutAttrString)
         self.textStorage.setAttributedString(mutAttrString)
         self.setNeedsDisplay()
     }
@@ -329,7 +327,7 @@ public protocol ActionLabelDelegate: class {
     }
     
     private func textOrigin(inRect rect: CGRect) -> CGPoint {
-        let usedRect = layoutManager.usedRectForTextContainer(textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
         heightCorrection = (rect.height - usedRect.height)/2
         let glyphOriginY = heightCorrection > 0 ? rect.origin.y + heightCorrection : rect.origin.y
         return CGPoint(x: rect.origin.x, y: glyphOriginY)
@@ -338,7 +336,7 @@ public protocol ActionLabelDelegate: class {
     /// add link attribute
     private func addLinkAttribute(mutAttrString: NSMutableAttributedString) {
         var range = NSRange(location: 0, length: 0)
-        var attributes = mutAttrString.attributesAtIndex(0, effectiveRange: &range)
+        var attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
         
         attributes[NSFontAttributeName] = font!
         attributes[NSForegroundColorAttributeName] = textColor
@@ -368,16 +366,16 @@ public protocol ActionLabelDelegate: class {
         let textRange = NSRange(location: 0, length: textLength)
         
         //URLS
-        let urlElements = ActionBuilder.getElementsByType(.URL, fromText: textString, range: textRange)
-        ActionElements[.URL]?.appendContentsOf(urlElements)
+        let urlElements = ActionBuilder.getElementsByType(type: .URL, fromText: textString, range: textRange)
+        ActionElements[.URL]?.append(contentsOf: urlElements)
         
         //HASHTAGS
-        let hashtagElements = ActionBuilder.getElementsByType(.Hashtag, fromText: textString, range: textRange, filterPredicate: hashtagFilterPredicate)
-        ActionElements[.Hashtag]?.appendContentsOf(hashtagElements)
+        let hashtagElements = ActionBuilder.getElementsByType(type: .Hashtag, fromText: textString, range: textRange, filterPredicate: hashtagFilterPredicate)
+        ActionElements[.Hashtag]?.append(contentsOf: hashtagElements)
         
         //MENTIONS
-        let mentionElements = ActionBuilder.getElementsByType(.Mention, fromText: textString, range: textRange, filterPredicate: mentionFilterPredicate)
-        ActionElements[.Mention]?.appendContentsOf(mentionElements)
+        let mentionElements = ActionBuilder.getElementsByType(type: .Mention, fromText: textString, range: textRange, filterPredicate: mentionFilterPredicate)
+        ActionElements[.Mention]?.append(contentsOf: mentionElements)
     }
     
     
@@ -386,10 +384,10 @@ public protocol ActionLabelDelegate: class {
         let mutAttrString = NSMutableAttributedString(attributedString: attrString)
         
         var range = NSRange(location: 0, length: 0)
-        var attributes = mutAttrString.attributesAtIndex(0, effectiveRange: &range)
+        var attributes = mutAttrString.attributes(at: 0, effectiveRange: &range)
         
         let paragraphStyle = attributes[NSParagraphStyleAttributeName] as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
-        paragraphStyle.lineBreakMode = NSLineBreakMode.ByWordWrapping
+        paragraphStyle.lineBreakMode = NSLineBreakMode.byWordWrapping
         paragraphStyle.alignment = textAlignment
         paragraphStyle.lineSpacing = CGFloat(lineSpacing)
         
@@ -404,7 +402,7 @@ public protocol ActionLabelDelegate: class {
             return
         }
         
-        var attributes = textStorage.attributesAtIndex(0, effectiveRange: nil)
+        var attributes = textStorage.attributes(at: 0, effectiveRange: nil)
         if isSelected {
             switch selectedElement.element {
             case .Mention(_): attributes[NSForegroundColorAttributeName] = mentionSelectedColor ?? mentionColor
@@ -433,14 +431,14 @@ public protocol ActionLabelDelegate: class {
         
         var correctLocation = location
         correctLocation.y -= heightCorrection
-        let boundingRect = layoutManager.boundingRectForGlyphRange(NSRange(location: 0, length: textStorage.length), inTextContainer: textContainer)
+        let boundingRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: 0, length: textStorage.length), in: textContainer)
         guard boundingRect.contains(correctLocation) else {
             return nil
         }
         
-        let index = layoutManager.glyphIndexForPoint(correctLocation, inTextContainer: textContainer)
+        let index = layoutManager.glyphIndex(for: correctLocation, in: textContainer)
         
-        for element in ActionElements.map({ $0.1 }).flatten() {
+        for element in ActionElements.flatMap({ $0.1 }) {
             if index >= element.range.location && index <= element.range.location + element.range.length {
                 return element
             }
@@ -451,34 +449,34 @@ public protocol ActionLabelDelegate: class {
     
     
     //MARK: - Handle UI Responder touches
-    public override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        if onTouch(touch) { return }
-        super.touchesBegan(touches, withEvent: event)
+        if onTouch(touch: touch) { return }
+        super.touchesBegan(touches, with: event)
     }
     
-    public override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        if onTouch(touch) { return }
-        super.touchesMoved(touches, withEvent: event)
+        if onTouch(touch: touch) { return }
+        super.touchesMoved(touches, with: event)
     }
     
-    public override func touchesCancelled(touches: Set<UITouch>?, withEvent event: UIEvent?) {
-        guard let touch = touches?.first else { return }
-        onTouch(touch)
-        super.touchesCancelled(touches, withEvent: event)
+    public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        onTouch(touch: touch)
+        super.touchesCancelled(touches, with: event)
     }
     
-    public override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        if onTouch(touch) { return }
-        super.touchesEnded(touches, withEvent: event)
+        if onTouch(touch: touch) { return }
+        super.touchesEnded(touches, with: event)
     }
     
     //MARK: - ActionLabel handler
     private func didTapMention(username: String) {
         guard let mentionHandler = mentionHandler else {
-            delegate?.didSelectText(username, type: .Mention)
+            delegate?.didSelectText(text: username, type: .Mention)
             return
         }
         mentionHandler(username)
@@ -486,7 +484,7 @@ public protocol ActionLabelDelegate: class {
     
     private func didTapHashtag(hashtag: String) {
         guard let hashtagHandler = hashtagHandler else {
-            delegate?.didSelectText(hashtag, type: .Hashtag)
+            delegate?.didSelectText(text: hashtag, type: .Hashtag)
             return
         }
         hashtagHandler(hashtag)
@@ -494,7 +492,7 @@ public protocol ActionLabelDelegate: class {
     
     private func didTapStringURL(stringURL: String) {
         guard let urlHandler = linkHandler, let url = NSURL(string: stringURL) else {
-            delegate?.didSelectText(stringURL, type: .URL)
+            delegate?.didSelectText(text: stringURL, type: .URL)
             return
         }
         urlHandler(url)
@@ -515,4 +513,3 @@ extension ActionLabel: UIGestureRecognizerDelegate {
         return true
     }
 }
-
